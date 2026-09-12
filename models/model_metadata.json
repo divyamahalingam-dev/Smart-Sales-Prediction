@@ -1,0 +1,74 @@
+{
+  "best_model": "Ridge Regression",
+  "metrics": {
+    "Linear Regression (Baseline)": {
+      "MAE": 1.182,
+      "RMSE": 1.384,
+      "R2": -0.0376
+    },
+    "Ridge Regression": {
+      "MAE": 1.182,
+      "RMSE": 1.384,
+      "R2": -0.0373
+    },
+    "Random Forest": {
+      "MAE": 1.196,
+      "RMSE": 1.388,
+      "R2": -0.044
+    },
+    "XGBoost Regressor": {
+      "MAE": 1.285,
+      "RMSE": 1.503,
+      "R2": -0.2237
+    }
+  },
+  "feature_columns": [
+    "store_encoded",
+    "product_encoded",
+    "category_encoded",
+    "unit_price",
+    "discount",
+    "promotion",
+    "holiday",
+    "year",
+    "month",
+    "week",
+    "day",
+    "day_of_week",
+    "is_weekend",
+    "quarter",
+    "month_sin",
+    "month_cos",
+    "dow_sin",
+    "dow_cos",
+    "lag_1",
+    "lag_7",
+    "lag_14",
+    "lag_30",
+    "rolling_mean_7",
+    "rolling_mean_14",
+    "rolling_mean_30",
+    "rolling_std_7",
+    "effective_price",
+    "discount_amount",
+    "promo_holiday_inter"
+  ],
+  "top_features": [
+    "rolling_std_7",
+    "quarter",
+    "lag_14",
+    "rolling_mean_14",
+    "dow_sin",
+    "effective_price",
+    "month_sin",
+    "rolling_mean_30",
+    "lag_7",
+    "month_cos"
+  ],
+  "training_records": 864,
+  "test_records": 216,
+  "evaluation_period": {
+    "start": "2024-12-26",
+    "end": "2025-06-30"
+  }
+}
