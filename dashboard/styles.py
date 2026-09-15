@@ -227,6 +227,26 @@ CUSTOM_LIGHT_CSS = """
         background-color: #F1F5F9;
         border: 1px solid #E2E8F0;
     }
+
+    /* Hide Streamlit Top-Right Toolbar, GitHub Link, Share, Edit, and MainMenu */
+    #MainMenu { visibility: hidden !important; display: none !important; }
+    header { visibility: hidden !important; display: none !important; }
+    header[data-testid="stHeader"] { visibility: hidden !important; display: none !important; }
+    div[data-testid="stToolbar"] { visibility: hidden !important; display: none !important; }
+    div[data-testid="stToolbarActions"] { visibility: hidden !important; display: none !important; }
+    div[data-testid="stHeaderActionElements"] { visibility: hidden !important; display: none !important; }
+    div[data-testid="stDecoration"] { visibility: hidden !important; display: none !important; }
+    div[data-testid="stStatusWidget"] { visibility: hidden !important; display: none !important; }
+    footer { visibility: hidden !important; display: none !important; }
+    .stAppDeployButton { display: none !important; }
+    [data-testid="stActionButton"] { display: none !important; }
+    .viewerBadge_container__1QSob { display: none !important; }
+
+    /* Adjust page top padding now that default header is removed */
+    .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 2rem !important;
+    }
 </style>
 """
 
