@@ -15,18 +15,25 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Ensure src is importable
+# Ensure src and dashboard directories are importable
 SRC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
-if SRC_DIR not in sys.path:
-    sys.path.insert(0, SRC_DIR)
+DASH_DIR = os.path.abspath(os.path.dirname(__file__))
+for path_dir in [SRC_DIR, DASH_DIR]:
+    if path_dir not in sys.path:
+        sys.path.insert(0, path_dir)
 
 from database import get_db
 from preprocessing import clean_sales_data, validate_sales_schema, generate_sample_sales_csv
 from prediction import get_prediction_engine
 from inventory import get_inventory_optimizer
 from styles import apply_custom_styles, style_fig, format_curr, COLOR_SEQUENCE
+from login import render_login_page, render_user_profile_header
 
 apply_custom_styles()
+
+# ----------------- Authentication Gatekeeper -----------------
+if not render_login_page():
+    st.stop()
 
 # ----------------- Data Caching -----------------
 @st.cache_data(ttl=600)
@@ -54,7 +61,7 @@ prod_info = {p["product_id"]: p for p in products}
 # ==============================================================================
 # TOP CORPORATE HEADER BAR
 # ==============================================================================
-c_head, c_tele, c_curr = st.columns([3.2, 2.0, 1.0])
+c_head, c_tele, c_curr, c_auth = st.columns([2.6, 1.8, 0.9, 1.6])
 with c_head:
     st.markdown('<div style="display: flex; align-items: center; gap: 12px;">'
                 '<span style="font-size: 2.2rem;">📊</span>'
@@ -69,7 +76,7 @@ with c_tele:
         db_badge = f'<span class="bi-badge bi-badge-success">● Live MongoDB</span>'
         
     active_ds = st.session_state.get("active_file_name", "Benchmark (68.4k)")
-    ds_badge = f'<span class="bi-badge bi-badge-info">📁 {active_ds[:22]}</span>'
+    ds_badge = f'<span class="bi-badge bi-badge-info">📁 {active_ds[:20]}</span>'
 
     st.markdown(f"""
     <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 10px 14px; border-radius: 8px; font-size: 0.8rem; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
@@ -77,7 +84,7 @@ with c_tele:
             <span><b>Engine:</b> {db_badge}</span>
             <span>{ds_badge}</span>
         </div>
-        <div style="color: #64748B; display: flex; gap: 12px;">
+        <div style="color: #64748B; display: flex; gap: 10px; font-size: 0.77rem;">
             <span>Orders: <b>{counts['sales']:,}</b></span>
             <span>SKUs: <b>{counts['products']}</b></span>
             <span>Stores: <b>{counts['stores']}</b></span>
@@ -89,6 +96,9 @@ with c_tele:
 with c_curr:
     currency = st.selectbox("Currency Format", ["₹ INR (₹)", "$ USD ($)"], index=0)
     curr_symbol = "₹" if "INR" in currency else "$"
+
+with c_auth:
+    render_user_profile_header()
 
 st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
@@ -856,6 +866,7 @@ with tab_db:
                 <div>• stores: <b>{cnts['stores']}</b></div>
                 <div>• inventory: <b>{cnts['inventory']}</b></div>
                 <div>• predictions: <b>{cnts['predictions']}</b></div>
+                <div>• users: <b>{cnts.get('users', 0)}</b></div>
                 <div>• Total: <b>{sum(cnts.values()):,}</b></div>
             </div>
         </div>
@@ -866,7 +877,7 @@ with tab_db:
     
     selected_coll = st.selectbox(
         "Choose Collection to Query",
-        ["products", "stores", "inventory", "predictions", "sales"]
+        ["products", "stores", "inventory", "predictions", "users", "sales"]
     )
     
     if selected_coll == "products":
@@ -881,6 +892,9 @@ with tab_db:
     elif selected_coll == "predictions":
         data = db.get_predictions()
         df_view = pd.DataFrame(data) if data else pd.DataFrame(columns=["prediction_date", "product_id", "store_id", "predicted_quantity", "predicted_revenue", "model_name"])
+    elif selected_coll == "users":
+        data = db.get_all_users()
+        df_view = pd.DataFrame(data)
     elif selected_coll == "sales":
         df_view = sales_df.head(100)
         st.caption("Displaying sample of the first 100 documents:")

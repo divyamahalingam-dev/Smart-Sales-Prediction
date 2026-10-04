@@ -7,6 +7,11 @@ import pandas as pd
 import pymongo
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+import hashlib
+
+def hash_password(password: str, salt: str = "smart_sales_2026") -> str:
+    """Computes a SHA-256 salted hash of the given password."""
+    return hashlib.sha256(f"{salt}_{password}".encode("utf-8")).hexdigest()
 
 try:
     import mongomock
@@ -29,6 +34,44 @@ CACHE_FILE = os.path.join(BASE_DIR, "data", ".mongo_data_store.json")
 
 DEFAULT_MONGO_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
 DEFAULT_DB_NAME = os.getenv("MONGODB_DB", "smart_sales_db")
+
+DEFAULT_USERS = [
+    {
+        "username": "admin",
+        "password_hash": hash_password("admin123"),
+        "full_name": "System Administrator",
+        "role": "Administrator",
+        "email": "admin@retailintel.com"
+    },
+    {
+        "username": "manager",
+        "password_hash": hash_password("sales123"),
+        "full_name": "Operations Lead",
+        "role": "Store Operations Manager",
+        "email": "manager@retailintel.com"
+    },
+    {
+        "username": "analyst",
+        "password_hash": hash_password("analyst123"),
+        "full_name": "Demand Forecaster",
+        "role": "Demand Analyst",
+        "email": "analyst@retailintel.com"
+    },
+    {
+        "username": "divya",
+        "password_hash": hash_password("divya123"),
+        "full_name": "Divya Mahalingam",
+        "role": "Project Owner",
+        "email": "divya@retailintel.com"
+    },
+    {
+        "username": "santhosh",
+        "password_hash": hash_password("santhosh123"),
+        "full_name": "Santhosh Kumar",
+        "role": "Lead Architect",
+        "email": "santhosh@retailintel.com"
+    }
+]
 
 class DatabaseManager:
     """
@@ -78,6 +121,7 @@ class DatabaseManager:
                 raise RuntimeError("Neither real MongoDB nor mongomock is available.")
 
         self._ensure_indexes()
+        self.seed_default_users()
 
     def _save_to_cache(self):
         """Saves current state to cache file for seamless cross-process persistence in mock mode."""
@@ -88,7 +132,8 @@ class DatabaseManager:
                 "stores": list(self.db.stores.find({}, {"_id": 0})),
                 "products": list(self.db.products.find({}, {"_id": 0})),
                 "predictions": list(self.db.predictions.find({}, {"_id": 0})),
-                "inventory": list(self.db.inventory.find({}, {"_id": 0}))
+                "inventory": list(self.db.inventory.find({}, {"_id": 0})),
+                "users": list(self.db.users.find({}, {"_id": 0}))
             }
             with open(CACHE_FILE, "w", encoding="utf-8") as f:
                 json.dump(state, f, indent=2)
@@ -110,6 +155,8 @@ class DatabaseManager:
                 self.db.predictions.insert_many(state["predictions"])
             if state.get("inventory"):
                 self.db.inventory.insert_many(state["inventory"])
+            if state.get("users"):
+                self.db.users.insert_many(state["users"])
             logger.info("Loaded persisted metadata into Mock MongoDB from local cache.")
         except Exception as e:
             logger.warning(f"Failed to load mock cache: {e}")
@@ -141,6 +188,7 @@ class DatabaseManager:
             self.db.stores.create_index([("store_id", pymongo.ASCENDING)], unique=True)
             self.db.predictions.create_index([("prediction_date", pymongo.ASCENDING), ("product_id", pymongo.ASCENDING)])
             self.db.inventory.create_index([("product_id", pymongo.ASCENDING)], unique=True)
+            self.db.users.create_index([("username", pymongo.ASCENDING)], unique=True)
         except Exception as e:
             pass
 
@@ -353,6 +401,60 @@ class DatabaseManager:
             self.upsert_inventory(inv)
         return inv
 
+    # --- Collection: users & Authentication ---
+    def seed_default_users(self):
+        """Seeds default accounts into the users collection if empty."""
+        try:
+            if self.db.users.count_documents({}) == 0:
+                for u in DEFAULT_USERS:
+                    self.db.users.update_one({"username": u["username"]}, {"$set": u}, upsert=True)
+                self._save_to_cache()
+                logger.info("Default enterprise users seeded successfully.")
+        except Exception as e:
+            logger.warning(f"Error seeding default users: {e}")
+
+    def authenticate_user(self, username: str, password: str) -> Optional[Dict[str, Any]]:
+        """Verifies credentials against MongoDB or Mock DB. Returns user doc on success, None on failure."""
+        self.seed_default_users()
+        u = (username or "").strip().lower()
+        if not u or not password:
+            return None
+        user = self.db.users.find_one({"username": u}, {"_id": 0})
+        if user and user.get("password_hash") == hash_password(password):
+            # Return safe user dictionary without password hash
+            user_safe = dict(user)
+            user_safe.pop("password_hash", None)
+            return user_safe
+        return None
+
+    def register_user(self, username: str, password: str, full_name: str = "", role: str = "Demand Analyst", email: str = "") -> tuple:
+        """Registers a new user in MongoDB / Mock DB. Returns (success_bool, message)."""
+        self.seed_default_users()
+        u = (username or "").strip().lower()
+        if not u or len(u) < 3:
+            return False, "Username must be at least 3 characters."
+        if not password or len(password) < 4:
+            return False, "Password must be at least 4 characters."
+        if self.db.users.find_one({"username": u}):
+            return False, f"Username '{u}' is already registered."
+        
+        doc = {
+            "username": u,
+            "password_hash": hash_password(password),
+            "full_name": full_name.strip() or u.capitalize(),
+            "role": role,
+            "email": email.strip() or f"{u}@retailintel.com",
+            "created_at": datetime.now().isoformat()
+        }
+        self.db.users.insert_one(doc)
+        self._save_to_cache()
+        return True, f"Account '{u}' registered successfully!"
+
+    def get_all_users(self) -> List[Dict[str, Any]]:
+        """Returns all registered users with sensitive password hash stripped."""
+        self.seed_default_users()
+        return list(self.db.users.find({}, {"_id": 0, "password_hash": 0}))
+
     def get_counts(self) -> Dict[str, int]:
         s_count = self.db.sales.count_documents({})
         if s_count == 0 and os.path.exists(os.path.join(BASE_DIR, "data", "raw_sales.csv")):
@@ -363,7 +465,8 @@ class DatabaseManager:
             "products": max(len(self.get_products()), self.db.products.count_documents({})),
             "stores": max(len(self.get_stores()), self.db.stores.count_documents({})),
             "predictions": self.db.predictions.count_documents({}),
-            "inventory": max(len(self.get_inventory()), self.db.inventory.count_documents({}))
+            "inventory": max(len(self.get_inventory()), self.db.inventory.count_documents({})),
+            "users": max(len(self.get_all_users()), self.db.users.count_documents({}))
         }
 
 db_manager = DatabaseManager()

@@ -847,5 +847,42 @@
       "unit_price": 365.64,
       "estimated_reorder_cost": 236569.08
     }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "password_hash": "9438386e3cc06c9d41785249220ac3d4023eca1c853d00cd70967043a2cd643d",
+      "full_name": "System Administrator",
+      "role": "Administrator",
+      "email": "admin@retailintel.com"
+    },
+    {
+      "username": "manager",
+      "password_hash": "4421dc8977f69f6dfa3bef08c94312ea0abf14038963d68628b06d86cadd5a3b",
+      "full_name": "Operations Lead",
+      "role": "Store Operations Manager",
+      "email": "manager@retailintel.com"
+    },
+    {
+      "username": "analyst",
+      "password_hash": "75f8881b4fa2b0a14047a5127bb141ba8b6847cb4af1414eed43f4025bc299cb",
+      "full_name": "Demand Forecaster",
+      "role": "Demand Analyst",
+      "email": "analyst@retailintel.com"
+    },
+    {
+      "username": "divya",
+      "password_hash": "b5cd31026521cb075aac1787e1ef8ee108aa160c9a58846a9b06c854e628dc52",
+      "full_name": "Divya Mahalingam",
+      "role": "Project Owner",
+      "email": "divya@retailintel.com"
+    },
+    {
+      "username": "santhosh",
+      "password_hash": "cfee1d028aaae3e6df8f959f93dd55d3178d0ba97d9527a1e4cdd3892740f47d",
+      "full_name": "Santhosh Kumar",
+      "role": "Lead Architect",
+      "email": "santhosh@retailintel.com"
+    }
   ]
 }
